@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build & Sell with Claude Code — 復習ノート</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --bg2: #1a1a1a;
+    --bg3: #222;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8e8e8;
+    --text2: #999;
+    --text3: #666;
+    --accent: #7ee8a2;
+    --accent2: #3ecf8e;
+    --tag-bg: rgba(126,232,162,0.1);
+    --tag-text: #7ee8a2;
+    --note-bg: rgba(255,255,255,0.04);
+    --code-bg: rgba(255,255,255,0.08);
+    --chapter-colors: #7ee8a2, #60b4ff, #ff9f7e, #c084fc, #fbbf24;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(15,15,15,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 0.5px solid var(--border);
+    padding: 1rem 1.25rem;
+  }
+  .site-header h1 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+  }
+  .search-wrap {
+    position: relative;
+  }
+  .search-wrap input {
+    width: 100%;
+    background: var(--bg3);
+    border: 0.5px solid var(--border2);
+    border-radius: 8px;
+    padding: 0.6rem 1rem 0.6rem 2.25rem;
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-wrap input:focus {
+    border-color: var(--accent2);
+  }
+  .search-wrap input::placeholder { color: var(--text3); }
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  /* Main */
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  /* Chapter */
+  .chapter { margin-bottom: 2.5rem; }
+  .chapter-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+  .chapter-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .chapter-label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--text2);
+    text-transform: uppercase;
+  }
+  .chapter-line {
+    flex: 1;
+    height: 0.5px;
+    background: var(--border);
+  }
+
+  /* Cards */
+  .cards { display: flex; flex-direction: column; gap: 8px; }
+
+  .card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card.open { border-color: var(--border2); }
+
+  .card-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .card-term {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .card-en {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .card-arrow {
+    color: var(--text3);
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+  .card.open .card-arrow { transform: rotate(180deg); }
+
+  .card-body {
+    display: none;
+    padding: 0 1.25rem 1.25rem;
+    border-top: 0.5px solid var(--border);
+    margin-top: 0;
+  }
+  .card.open .card-body { display: block; }
+
+  .card-body-inner {
+    padding-top: 1rem;
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.8;
+  }
+
+  .card-body-inner strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .card-body-inner code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--code-bg);
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  .card-body-inner ol, .card-body-inner ul {
+    padding-left: 1.25rem;
+    margin-top: 0.5rem;
+  }
+  .card-body-inner li { margin-bottom: 4px; }
+
+  .note {
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    background: var(--note-bg);
+    border-left: 2px solid var(--accent2);
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  /* No results */
+  .no-results {
+    color: var(--text3);
+    font-size: 14px;
+    padding: 2rem 0;
+    text-align: center;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    font-size: 12px;
+    color: var(--text3);
+    border-top: 0.5px solid var(--border);
+  }
+
+  @media (min-width: 600px) {
+    .site-header { padding: 1.25rem 2rem; }
+    main { padding: 2rem 2rem 4rem; }
+    .card-toggle { padding: 1.1rem 1.5rem; }
+    .card-body { padding: 0 1.5rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>BUILD &amp; SELL WITH CLAUDE CODE — 復習ノート</h1>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search" placeholder="用語を検索..." oninput="filterCards()" autocomplete="off" />
+  </div>
+</header>
+
+<main id="main"></main>
+
+<footer>Tsukky の学習ノート · Build &amp; Sell with Claude Code</footer>
+
+<script>
+const CHAPTER_COLORS = ['#7ee8a2','#60b4ff','#ff9f7e','#c084fc','#fbbf24'];
+
+const chapters = [
+  {
+    title: "第1章　基礎・環境設定",
+    cards: [
+      {
+        term: "ターミナルの基本コマンド",
+        en: "CLI Commands",
+        body: `コンピューターに文字で命令を送る基本的な操作です。<br><br>
+<code>cd C:\\Users\\ttaku\\OneDrive\\デスクトップ</code> — デスクトップに移動<br>
+<code>mkdir プロジェクト名</code> — 作業フォルダ（部屋）を作る<br>
+<code>cd プロジェクト名</code> — そのフォルダに入る<br>
+<code>claude</code> — Claude Codeを起動する<br>
+<code>pwd</code> — 今どこにいるか（現在地）を確認する`,
+        note: "毎回この順番で実行することで、Claude Codeが起動します。"
+      },
+      {
+        term: "GUI と CLI",
+        en: "GUI / CLI",
+        body: `コンピューターの操作方法は2種類あります。<br><br>
+<strong>GUI（ジーユーアイ）</strong>：マウスでクリックして操作。例：Windowsエクスプローラー。直感的で誰でも使えます。<br><br>
+<strong>CLI（シーエルアイ）</strong>：文字を打ち込んで操作。例：ターミナル。Claudeはマウスを動かせないため、CLIの方が相性が良いです。`,
+        note: "Claude Codeはテキストの命令で動くため、CLIを使います。"
+      },
+      {
+        term: "コンテキストウィンドウ",
+        en: "Context Window",
+        body: `AIが一度に覚えられる情報量の上限のことです。人間の「作業記憶」に相当します。<br><br>
+この上限を超えると、AIは以前の会話内容を忘れてしまい、意図しない動作をすることがあります。トークン（処理単位）の消費量にも直結します。`,
+        note: "長い会話ほどトークンを消費し、コストも増えます。"
+      },
+      {
+        term: "Claude.md",
+        en: "Configuration File / Markdown",
+        body: `各プロジェクトでClaudeが守るべきルールを書いておくファイルです。mdはMarkdown（マークダウン）という書き方の形式のことです。<br><br>
+自然言語（普通の日本語・英語）で書くだけで、Claudeがそれを読んでルール通りに動いてくれます。<br><br>
+書ける内容の例：<br>
+• 口調・文体のルール<br>
+• 扱う範囲の制限<br>
+• 使えるスキル（ツール）の定義`,
+        note: "Claude.mdを書き換えるだけで、全く別の専門AIが作れます。"
+      }
+    ]
+  },
+  {
+    title: "第2章　ワークフロー構築とデプロイ",
+    cards: [
+      {
+        term: "ワークフローの3要素",
+        en: "Trigger / Process / Action",
+        body: `自動化の基本構造は3つのステップで成り立ちます。<br><br>
+<strong>① Trigger（トリガー）</strong>：自動化を起動するきっかけ。例：「メールが届いたら」<br>
+<strong>② Process（プロセス）</strong>：きっかけを受けて行う処理。例：「内容を判定する」<br>
+<strong>③ Action（アクション）</strong>：最終的に実行すること。例：「スプレッドシートに記録する」<br><br>
+<strong>Workflow（ワークフロー）</strong>とはこのTriggerからActionまでの流れ全体のことです。`,
+        note: "Flowchart（フローチャート）とはIF文の流れを図にしたものです。"
+      },
+      {
+        term: "n8n と IFノード",
+        en: "n8n / IF Node",
+        body: `<strong>n8n（エヌエイトエヌ）</strong>：ワークフローをビジュアルで作れるツール。ブロックを繋いで自動化を構築します。プログラミング不要。<br><br>
+<strong>IFノード</strong>：条件分岐を作るブロック。「もし〇〇なら→Aを実行、そうでなければ→Bを実行」という処理を図で作れます。`,
+        note: "視覚的にワークフローを組み立てられるため、コードを書かなくても自動化が作れます。"
+      },
+      {
+        term: "デプロイ",
+        en: "Deploy",
+        body: `ローカル環境（自分のPC）で作ったワークフローを、インターネット上のサーバー（クラウド）に移して動かすことです。<br><br>
+クラウドとは24時間常時稼働しているコンピューターのことで、自分のPCの電源を切っても動き続けます。<br><br>
+代表的なクラウドサービス：<strong>Railway</strong>・<strong>Render</strong>・<strong>AWS</strong>`,
+        note: "デプロイして初めて「商品」として成立します。自分のPCに依存しなくなります。"
+      }
+    ]
+  },
+  {
+    title: "第3章　高度なシステム設計",
+    cards: [
+      {
+        term: "アーキテクチャ",
+        en: "Architecture",
+        body: `プロジェクトのファイルやフォルダを論理的に整理すること、またその設計思想です。<br><br>
+代表的なフォルダ構成：<br>
+<code>src/</code> — 実際に動くコード<br>
+<code>config/</code> — 設定ファイル<br>
+<code>data/</code> — データ<br>
+<code>docs/</code> — 説明文書<br>
+<code>CLAUDE.md</code> — AIへの指示書`,
+        note: "整理されていないと、システムが大きくなったときにAIも人間も混乱します。"
+      },
+      {
+        term: "ハルシネーション と RAG",
+        en: "Hallucination / RAG",
+        body: `<strong>Hallucination（ハルシネーション）</strong>：AIが知らないことを聞かれたとき、もっともらしい嘘をついてしまう現象。<br><br>
+<strong>RAG（ラグ）</strong>：AIが回答を生成する前に、外部データを参照させる仕組み。Retrieval-Augmented Generation の略。<br><br>
+RAGの3ステップ：<br>
+<ol><li>蓄積：マニュアル等をデータベースに入れる</li><li>Retrieval（検索）：質問が来たら関連情報を探す</li><li>Generation：見つけた情報を根拠に回答を生成する</li></ol>`,
+        note: "RAGによってハルシネーションを防ぎ、AIに正確な専門知識を持たせられます。"
+      },
+      {
+        term: "UI・フロントエンド・バックエンド・SaaS",
+        en: "UI / Frontend / Backend / SaaS",
+        body: `<strong>UI（ユーザーインターフェース）</strong>：ユーザーが目で見て操作する部分。<br>
+<strong>フロントエンド</strong>：UIそのもの。見える部分。<br>
+<strong>バックエンド</strong>：裏側の処理。n8nなどが担当。<br><br>
+<strong>SaaS（サース）</strong>：ソフトウェアをインターネット経由で使わせ、月額料金をもらうビジネスモデル。NetflixやSlackが代表例。買い切りではなく継続課金。`,
+        note: "n8n（バックエンド）に使いやすい画面（フロントエンド）を被せると、SaaSとして販売できます。"
+      }
+    ]
+  },
+  {
+    title: "第4章　API・エージェント・ブラウザ操作",
+    cards: [
+      {
+        term: "API と APIキー",
+        en: "API / API Key",
+        body: `<strong>API（エーピーアイ）</strong>：外部サービスと会話するための窓口。ウェイターさんのように、あなたの代わりに外部サービスに注文を伝えてくれます。<br><br>
+<strong>APIキー</strong>：その窓口を使うための「通行証」。あなたが誰かを証明するパスワードのようなもの。<strong>絶対に他人に教えてはいけません。</strong><br><br>
+キーはGoogleアカウント（またはプロジェクト）ごとに発行できます。用途ごとに別々のキーを作るのがベストプラクティスです。`,
+        note: "漏洩した場合、そのキーだけ無効化すれば被害を最小限に抑えられます。"
+      },
+      {
+        term: "MCP",
+        en: "Model Context Protocol",
+        body: `外部サービスとAIを繋ぐ「統一された鍵穴の規格」です。Anthropicが2024年11月に公開しました。<br><br>
+以前はサービスごとにバラバラな接続方法が必要でしたが、MCPによって接続口が統一されました。<br><br>
+<strong>API</strong> ＝ 各サービスへの鍵<br>
+<strong>MCP</strong> ＝ 統一された鍵穴の規格<br><br>
+MCPがあってもAPIキーは引き続き必要です。`,
+        note: "AIが「話すだけ」から「実際に行動できる」存在になる、AGIへの重要な一歩です。"
+      },
+      {
+        term: "Google CLI連携",
+        en: "Google CLI",
+        body: `GmailやGoogleドライブを、ブラウザで開かなくてもターミナルからのテキスト命令だけで操作できるようにする仕組みです。<br><br>
+Claudeはマウスを使えないため、CLIを通じてGoogleサービスを自動操縦させます。`,
+        note: "「毎朝Gmailを確認してスプレッドシートに記録する」といった作業が人間の介入ゼロで動きます。"
+      },
+      {
+        term: "AI秘書とスキル",
+        en: "AI Assistant / Skill",
+        body: `<strong>AI秘書</strong>：特定の仕事に特化した、自分専用のAI。Claude.mdに役割・ルール・スキルを定義して作ります。<br><br>
+<strong>スキル</strong>：AI秘書に追加する特定の能力。Claude.mdの中に書く内容の一つ。<br><br>
+例：Web検索・メール送信・ファイル読み書き・計算など<br><br>
+Claude.mdが<strong>人格と制約</strong>、スキルが<strong>手足</strong>。両方揃って「使える秘書」になります。`,
+        note: "Claude.mdを書き換えるだけで、営業専門・経理専門・接客専門など異なるAI秘書が作れます。"
+      },
+      {
+        term: "サブエージェントとエージェントチーム",
+        en: "Sub-agent / Orchestrator / Multi-agent",
+        body: `<strong>エージェント（Agent）</strong>：自律的に判断して動くAI。<br>
+<strong>オーケストレーター</strong>：チームを指揮するリーダーAI。<br>
+<strong>サブエージェント</strong>：専門分野を担当する部下AI。<br><br>
+例：「競合リサーチレポートを作って」という指示に対し、リサーチ担当・分析担当・執筆担当のAIが並列で動き、リーダーAIが統合して完成品を渡します。`,
+        note: "YouTubeでよく見る「部下を量産する」系の動画はこの概念です。"
+      },
+      {
+        term: "ブラウザ自動化",
+        en: "Browser Automation / Web Scraping",
+        body: `AIに人間の代わりにブラウザを操作させること。クリック・スクロール・フォーム入力・情報取得などをAIが自動で実行します。<br><br>
+APIが存在しない古いシステムや中小企業のサービスからも情報を取得できます。<br><br>
+代表的なツール：<strong>Playwright（プレイライト）</strong>・<strong>Puppeteer（パペティア）</strong>`,
+        note: "「毎日競合サイトの価格を巡回して変化があれば通知する」といった自動化が実現できます。"
+      }
+    ]
+  },
+  {
+    title: "第5章　運用管理・ビジネス収益化",
+    cards: [
+      {
+        term: "権限管理",
+        en: "Permission Management",
+        body: `AIにどこまで触らせるかを明示的に制限することです。<br><br>
+Claude Codeはあなたのパソコンに直接触れるため、権限を与えすぎると重要なファイルを誤って削除・書き換えるリスクがあります。`,
+        note: "新人アルバイトに「バックヤードはOK、金庫室はダメ」と決めておくイメージです。"
+      },
+      {
+        term: "Git と GitHub",
+        en: "Git / GitHub / Version Control",
+        body: `<strong>Git（ギット）</strong>：ファイルの変更履歴をオフラインで管理するツール。過去のバージョンにいつでも戻せます。<br><br>
+<strong>GitHub（ギットハブ）</strong>：Gitの履歴データをクラウドに保存・共有するサービス。GitをGitHubに送ることを <code>Push（プッシュ）</code> と言います。<br><br>
+<strong>Commit（コミット）</strong>：変更を記録すること<br>
+<strong>Revert（リバート）</strong>：過去の状態に戻すこと`,
+        note: "GitはGoogleドキュメントの「変更履歴」機能のコード版です。"
+      },
+      {
+        term: "Worktrees と Branch",
+        en: "Worktrees / Branch",
+        body: `<strong>Branch（ブランチ）</strong>：作業の分岐。本番用と開発用でコードを分けること。<br><br>
+<strong>Worktrees（ワークツリーズ）</strong>：同じプロジェクトの複数ブランチを同時に開いて作業できるGitの機能。<br><br>
+本番環境を動かしたまま、別の場所で新機能を開発できます。失敗しても本番は完全に無傷です。`,
+        note: "Wordで「最終版.docx」と「改良中.docx」を同時に開いて作業するイメージです。"
+      },
+      {
+        term: "バリューベース・プライシング",
+        en: "Value-Based Pricing / Retainer",
+        body: `労働時間ではなく、提供する価値に基づいて価格を決める方法です。<br><br>
+<strong>時間ベース</strong>：「10時間かかったので10万円」→ 効率化すると損をする矛盾が生まれる<br>
+<strong>価値ベース</strong>：「月100万円のコストが削減されるので30万円」→ 作業時間は関係ない<br><br>
+<strong>Retainer（リテーナー）</strong>：月額の保守費用。10件契約で月30万円が自動的に入り続ける安定収益モデル。`,
+        note: "Claude Codeで開発が速くなるほど、価値ベースの方が有利になります。"
+      },
+      {
+        term: "オンボーディング",
+        en: "Onboarding / Delivery",
+        body: `完成したシステムを引き渡し、クライアントがスムーズに使い始められるようサポートするプロセス全体です。<br><br>
+含まれる内容：<br>
+• 使い方マニュアル（ドキュメント）の作成<br>
+• 操作説明（ZoomやMeetでのデモ）<br>
+• サポート体制の明示<br>
+• 1ヶ月後の効果確認`,
+        note: "新規クライアント獲得のコストは既存維持の5倍。オンボーディングの質が長期契約と紹介を生みます。"
+      }
+    ]
+  }
+];
+
+function render(filter = "") {
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  const q = filter.toLowerCase();
+  let totalFound = 0;
+
+  chapters.forEach((ch, ci) => {
+    const color = CHAPTER_COLORS[ci % CHAPTER_COLORS.length];
+    const filtered = ch.cards.filter(c =>
+      c.term.toLowerCase().includes(q) ||
+      c.en.toLowerCase().includes(q) ||
+      c.body.toLowerCase().includes(q) ||
+      (c.note && c.note.toLowerCase().includes(q))
+    );
+    if (!filtered.length) return;
+    totalFound += filtered.length;
+
+    const section = document.createElement("div");
+    section.className = "chapter";
+    section.innerHTML = `
+      <div class="chapter-header">
+        <div class="chapter-dot" style="background:${color}"></div>
+        <span class="chapter-label">${ch.title}</span>
+        <div class="chapter-line"></div>
+      </div>
+      <div class="cards"></div>
+    `;
+    const grid = section.querySelector(".cards");
+
+    filtered.forEach(card => {
+      const el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML = `
+        <button class="card-toggle" aria-expanded="false">
+          <span class="card-term">${card.term}</span>
+          <span class="card-en">${card.en}</span>
+          <span class="card-arrow">▾</span>
+        </button>
+        <div class="card-body">
+          <div class="card-body-inner">
+            ${card.body}
+            ${card.note ? `<div class="note">${card.note}</div>` : ""}
+          </div>
+        </div>
+      `;
+      el.querySelector(".card-toggle").addEventListener("click", () => {
+        el.classList.toggle("open");
+      });
+      grid.appendChild(el);
+    });
+
+    main.appendChild(section);
+  });
+
+  if (!totalFound) {
+    main.innerHTML = `<p class="no-results">「${filter}」に一致する用語が見つかりませんでした。</p>`;
+  }
+}
+
+function filterCards() {
+  render(document.getElementById("search").value);
+}
+
+render();
+</script>
+</body>
+</html>
