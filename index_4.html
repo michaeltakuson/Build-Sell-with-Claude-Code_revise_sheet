@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build & Sell with Claude Code — 復習ノート</title>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --bg2: #1a1a1a;
+    --bg3: #222;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8e8e8;
+    --text2: #999;
+    --text3: #666;
+    --accent: #7ee8a2;
+    --accent2: #3ecf8e;
+    --tag-bg: rgba(126,232,162,0.1);
+    --tag-text: #7ee8a2;
+    --note-bg: rgba(255,255,255,0.04);
+    --code-bg: rgba(255,255,255,0.08);
+    --chapter-colors: #7ee8a2, #60b4ff, #ff9f7e, #c084fc, #fbbf24;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(15,15,15,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 0.5px solid var(--border);
+    padding: 1rem 1.25rem;
+  }
+  .site-header h1 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+  }
+  .search-wrap {
+    position: relative;
+  }
+  .search-wrap input {
+    width: 100%;
+    background: var(--bg3);
+    border: 0.5px solid var(--border2);
+    border-radius: 8px;
+    padding: 0.6rem 1rem 0.6rem 2.25rem;
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-wrap input:focus {
+    border-color: var(--accent2);
+  }
+  .search-wrap input::placeholder { color: var(--text3); }
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  /* Main */
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  /* Chapter */
+  .chapter { margin-bottom: 2.5rem; }
+  .chapter-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+  .chapter-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .chapter-label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--text2);
+    text-transform: uppercase;
+  }
+  .chapter-line {
+    flex: 1;
+    height: 0.5px;
+    background: var(--border);
+  }
+
+  /* Cards */
+  .cards { display: flex; flex-direction: column; gap: 8px; }
+
+  .card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card.open { border-color: var(--border2); }
+
+  .card-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .card-term {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .card-en {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .card-arrow {
+    color: var(--text3);
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+  .card.open .card-arrow { transform: rotate(180deg); }
+
+  .card-body {
+    display: none;
+    padding: 0 1.25rem 1.25rem;
+    border-top: 0.5px solid var(--border);
+    margin-top: 0;
+  }
+  .card.open .card-body { display: block; }
+
+  .card-body-inner {
+    padding-top: 1rem;
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.8;
+  }
+
+  .card-body-inner strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .card-body-inner code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--code-bg);
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  .card-body-inner ol, .card-body-inner ul {
+    padding-left: 1.25rem;
+    margin-top: 0.5rem;
+  }
+  .card-body-inner li { margin-bottom: 4px; }
+
+  .note {
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    background: var(--note-bg);
+    border-left: 2px solid var(--accent2);
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  /* No results */
+  .no-results {
+    color: var(--text3);
+    font-size: 14px;
+    padding: 2rem 0;
+    text-align: center;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    font-size: 12px;
+    color: var(--text3);
+    border-top: 0.5px solid var(--border);
+  }
+
+  @media (min-width: 600px) {
+    .site-header { padding: 1.25rem 2rem; }
+    main { padding: 2rem 2rem 4rem; }
+    .card-toggle { padding: 1.1rem 1.5rem; }
+    .card-body { padding: 0 1.5rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>BUILD &amp; SELL WITH CLAUDE CODE — 復習ノート</h1>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search" placeholder="用語を検索..." oninput="filterCards()" autocomplete="off" />
+  </div>
+</header>
+
+<main id="main"></main>
+
+<footer>Tsukky の学習ノート · Build &amp; Sell with Claude Code</footer>
+
+<script>
+const CHAPTER_COLORS = ['#7ee8a2','#60b4ff','#ff9f7e','#c084fc','#fbbf24','#34d399'];
+
+const chapters = [
+  {
+    title: "第1章　基礎・環境設定",
+    cards: [
+      {
+        term: "ターミナルの基本コマンド",
+        en: "CLI Commands",
+        body: `コンピューターに文字で命令を送る基本的な操作です。<br><br>
+<code>cd C:\\Users\\ttaku\\OneDrive\\デスクトップ</code> — デスクトップに移動<br>
+<code>mkdir プロジェクト名</code> — 作業フォルダ（部屋）を作る<br>
+<code>cd プロジェクト名</code> — そのフォルダに入る<br>
+<code>claude</code> — Claude Codeを起動する<br>
+<code>pwd</code> — 今どこにいるか（現在地）を確認する`,
+        note: "毎回この順番で実行することで、Claude Codeが起動します。"
+      },
+      {
+        term: "GUI と CLI",
+        en: "GUI / CLI",
+        body: `コンピューターの操作方法は2種類あります。<br><br>
+<strong>GUI（ジーユーアイ）</strong>：マウスでクリックして操作。例：Windowsエクスプローラー。直感的で誰でも使えます。<br><br>
+<strong>CLI（シーエルアイ）</strong>：文字を打ち込んで操作。例：ターミナル。Claudeはマウスを動かせないため、CLIの方が相性が良いです。`,
+        note: "Claude Codeはテキストの命令で動くため、CLIを使います。"
+      },
+      {
+        term: "コンテキストウィンドウ",
+        en: "Context Window",
+        body: `AIが一度に覚えられる情報量の上限のことです。人間の「作業記憶」に相当します。<br><br>
+この上限を超えると、AIは以前の会話内容を忘れてしまい、意図しない動作をすることがあります。トークン（処理単位）の消費量にも直結します。`,
+        note: "長い会話ほどトークンを消費し、コストも増えます。"
+      },
+      {
+        term: "Claude.md",
+        en: "Configuration File / Markdown",
+        body: `各プロジェクトでClaudeが守るべきルールを書いておくファイルです。mdはMarkdown（マークダウン）という書き方の形式のことです。<br><br>
+自然言語（普通の日本語・英語）で書くだけで、Claudeがそれを読んでルール通りに動いてくれます。<br><br>
+書ける内容の例：<br>
+• 口調・文体のルール<br>
+• 扱う範囲の制限<br>
+• 使えるスキル（ツール）の定義`,
+        note: "Claude.mdを書き換えるだけで、全く別の専門AIが作れます。"
+      }
+    ]
+  },
+  {
+    title: "第2章　ワークフロー構築とデプロイ",
+    cards: [
+      {
+        term: "ワークフローの3要素",
+        en: "Trigger / Process / Action",
+        body: `自動化の基本構造は3つのステップで成り立ちます。<br><br>
+<strong>① Trigger（トリガー）</strong>：自動化を起動するきっかけ。例：「メールが届いたら」<br>
+<strong>② Process（プロセス）</strong>：きっかけを受けて行う処理。例：「内容を判定する」<br>
+<strong>③ Action（アクション）</strong>：最終的に実行すること。例：「スプレッドシートに記録する」<br><br>
+<strong>Workflow（ワークフロー）</strong>とはこのTriggerからActionまでの流れ全体のことです。`,
+        note: "Flowchart（フローチャート）とはIF文の流れを図にしたものです。"
+      },
+      {
+        term: "n8n と IFノード",
+        en: "n8n / IF Node",
+        body: `<strong>n8n（エヌエイトエヌ）</strong>：ワークフローをビジュアルで作れるツール。ブロックを繋いで自動化を構築します。プログラミング不要。<br><br>
+<strong>IFノード</strong>：条件分岐を作るブロック。「もし〇〇なら→Aを実行、そうでなければ→Bを実行」という処理を図で作れます。`,
+        note: "視覚的にワークフローを組み立てられるため、コードを書かなくても自動化が作れます。"
+      },
+      {
+        term: "デプロイ",
+        en: "Deploy",
+        body: `ローカル環境（自分のPC）で作ったワークフローを、インターネット上のサーバー（クラウド）に移して動かすことです。<br><br>
+クラウドとは24時間常時稼働しているコンピューターのことで、自分のPCの電源を切っても動き続けます。<br><br>
+代表的なクラウドサービス：<strong>Railway</strong>・<strong>Render</strong>・<strong>AWS</strong>`,
+        note: "デプロイして初めて「商品」として成立します。自分のPCに依存しなくなります。"
+      }
+    ]
+  },
+  {
+    title: "第3章　高度なシステム設計",
+    cards: [
+      {
+        term: "アーキテクチャ",
+        en: "Architecture",
+        body: `プロジェクトのファイルやフォルダを論理的に整理すること、またその設計思想です。<br><br>
+代表的なフォルダ構成：<br>
+<code>src/</code> — 実際に動くコード<br>
+<code>config/</code> — 設定ファイル<br>
+<code>data/</code> — データ<br>
+<code>docs/</code> — 説明文書<br>
+<code>CLAUDE.md</code> — AIへの指示書`,
+        note: "整理されていないと、システムが大きくなったときにAIも人間も混乱します。"
+      },
+      {
+        term: "ハルシネーション と RAG",
+        en: "Hallucination / RAG",
+        body: `<strong>Hallucination（ハルシネーション）</strong>：AIが知らないことを聞かれたとき、もっともらしい嘘をついてしまう現象。<br><br>
+<strong>RAG（ラグ）</strong>：AIが回答を生成する前に、外部データを参照させる仕組み。Retrieval-Augmented Generation の略。<br><br>
+RAGの3ステップ：<br>
+<ol><li>蓄積：マニュアル等をデータベースに入れる</li><li>Retrieval（検索）：質問が来たら関連情報を探す</li><li>Generation：見つけた情報を根拠に回答を生成する</li></ol>`,
+        note: "RAGによってハルシネーションを防ぎ、AIに正確な専門知識を持たせられます。"
+      },
+      {
+        term: "UI・フロントエンド・バックエンド・SaaS",
+        en: "UI / Frontend / Backend / SaaS",
+        body: `<strong>UI（ユーザーインターフェース）</strong>：ユーザーが目で見て操作する部分。<br>
+<strong>フロントエンド</strong>：UIそのもの。見える部分。<br>
+<strong>バックエンド</strong>：裏側の処理。n8nなどが担当。<br><br>
+<strong>SaaS（サース）</strong>：ソフトウェアをインターネット経由で使わせ、月額料金をもらうビジネスモデル。NetflixやSlackが代表例。買い切りではなく継続課金。`,
+        note: "n8n（バックエンド）に使いやすい画面（フロントエンド）を被せると、SaaSとして販売できます。"
+      }
+    ]
+  },
+  {
+    title: "第4章　API・エージェント・ブラウザ操作",
+    cards: [
+      {
+        term: "API と APIキー",
+        en: "API / API Key",
+        body: `<strong>API（エーピーアイ）</strong>：外部サービスと会話するための窓口。ウェイターさんのように、あなたの代わりに外部サービスに注文を伝えてくれます。<br><br>
+<strong>APIキー</strong>：その窓口を使うための「通行証」。あなたが誰かを証明するパスワードのようなもの。<strong>絶対に他人に教えてはいけません。</strong><br><br>
+キーはGoogleアカウント（またはプロジェクト）ごとに発行できます。用途ごとに別々のキーを作るのがベストプラクティスです。`,
+        note: "漏洩した場合、そのキーだけ無効化すれば被害を最小限に抑えられます。"
+      },
+      {
+        term: "MCP",
+        en: "Model Context Protocol",
+        body: `外部サービスとAIを繋ぐ「統一された鍵穴の規格」です。Anthropicが2024年11月に公開しました。<br><br>
+以前はサービスごとにバラバラな接続方法が必要でしたが、MCPによって接続口が統一されました。<br><br>
+<strong>API</strong> ＝ 各サービスへの鍵<br>
+<strong>MCP</strong> ＝ 統一された鍵穴の規格<br><br>
+MCPがあってもAPIキーは引き続き必要です。`,
+        note: "AIが「話すだけ」から「実際に行動できる」存在になる、AGIへの重要な一歩です。"
+      },
+      {
+        term: "Google CLI連携",
+        en: "Google CLI",
+        body: `GmailやGoogleドライブを、ブラウザで開かなくてもターミナルからのテキスト命令だけで操作できるようにする仕組みです。<br><br>
+Claudeはマウスを使えないため、CLIを通じてGoogleサービスを自動操縦させます。`,
+        note: "「毎朝Gmailを確認してスプレッドシートに記録する」といった作業が人間の介入ゼロで動きます。"
+      },
+      {
+        term: "AI秘書とスキル",
+        en: "AI Assistant / Skill",
+        body: `<strong>AI秘書</strong>：特定の仕事に特化した、自分専用のAI。Claude.mdに役割・ルール・スキルを定義して作ります。<br><br>
+<strong>スキル</strong>：AI秘書に追加する特定の能力。Claude.mdの中に書く内容の一つ。<br><br>
+例：Web検索・メール送信・ファイル読み書き・計算など<br><br>
+Claude.mdが<strong>人格と制約</strong>、スキルが<strong>手足</strong>。両方揃って「使える秘書」になります。`,
+        note: "Claude.mdを書き換えるだけで、営業専門・経理専門・接客専門など異なるAI秘書が作れます。"
+      },
+      {
+        term: "サブエージェントとエージェントチーム",
+        en: "Sub-agent / Orchestrator / Multi-agent",
+        body: `<strong>エージェント（Agent）</strong>：自律的に判断して動くAI。<br>
+<strong>オーケストレーター</strong>：チームを指揮するリーダーAI。<br>
+<strong>サブエージェント</strong>：専門分野を担当する部下AI。<br><br>
+例：「競合リサーチレポートを作って」という指示に対し、リサーチ担当・分析担当・執筆担当のAIが並列で動き、リーダーAIが統合して完成品を渡します。`,
+        note: "YouTubeでよく見る「部下を量産する」系の動画はこの概念です。"
+      },
+      {
+        term: "ブラウザ自動化",
+        en: "Browser Automation / Web Scraping",
+        body: `AIに人間の代わりにブラウザを操作させること。クリック・スクロール・フォーム入力・情報取得などをAIが自動で実行します。<br><br>
+APIが存在しない古いシステムや中小企業のサービスからも情報を取得できます。<br><br>
+代表的なツール：<strong>Playwright（プレイライト）</strong>・<strong>Puppeteer（パペティア）</strong>`,
+        note: "「毎日競合サイトの価格を巡回して変化があれば通知する」といった自動化が実現できます。"
+      }
+    ]
+  },
+  {
+    title: "第6章　Claude Code in Action",
+    cards: [
+      {
+        term: "Tool Use と Claude の強み",
+        en: "Tool Use / LLM",
+        body: `<strong>LLM</strong>はテキストを受け取ってテキストを返すだけで、ファイルを読んだりコマンドを実行したりは単体ではできません。<br><br>
+<strong>Tool Use</strong>：LLMが外部世界と接触するための仕組み。Claude Codeがツール指示を自動付加し、LLMがテキストで「ReadFile: main.go」などと返し、Claude Code側が実際に操作します。<br><br>
+ClaudeはこのTool Useの使い方が特に得意なLLMです。Tool Use自体はどのモデルでも使える仕組みですが、精度に大きな差があります。<br><br>
+<strong>セキュリティ上の利点：</strong><br>
+他のツール：コード全体 → 外部サーバーに送ってIndexing → セキュリティリスク<br>
+Claude Code：必要なファイルだけ → ローカルで読む → 外部送信なし`,
+        note: "Tool Useの精度が高い → Indexing不要 → コードが外部に漏れない、という構造。"
+      },
+      {
+        term: "新規プロジェクトの起動手順",
+        en: "Project Setup",
+        body: `<ol>
+<li><code>mkdir "プロジェクト名"</code> — フォルダを作る</li>
+<li><code>cd "プロジェクト名"</code> — そのフォルダに入る</li>
+<li><code>claude</code> — Claude Codeを起動</li>
+<li><code>/init</code> — CLAUDE.md を自動生成</li>
+<li>ここから作業開始</li>
+</ol><br>
+VSCodeで開く場合は <code>code .</code> を3と4の間に入れると便利です。`,
+        note: "スペースを含むパスや名前は必ずクォーテーション \" \" で囲み、スペースの代わりに - でつなぐ。"
+      },
+      {
+        term: "コンテキストの渡し方",
+        en: "@ Reference",
+        body: `指示の中で <code>@</code> を使うことで、ファイル・フォルダ・URLをコンテキストとして明示的に渡せます。<br><br>
+<strong>ファイルを参照：</strong><code>@README.md を読んで概要を教えて</code><br>
+<strong>フォルダを参照：</strong><code>@src/ の構造を説明して</code><br>
+<strong>URLを参照：</strong><code>@https://docs.anthropic.com を参考に実装して</code><br><br>
+関係ない情報を与えすぎるとClaudeの精度が下がります。必要な情報だけを渡すことが重要です。`,
+        note: "渡したファイルの内容はそのままコンテキストウィンドウに積まれるため、不要なファイルを渡しすぎるとトークンを無駄に消費します。"
+      },
+      {
+        term: "Planning Mode と Thinking Mode",
+        en: "Planning / Thinking",
+        body: `<strong>Planning Mode（Shift + Tab × 2）</strong>：複数ファイルにまたがる大きな変更のとき、先に計画を立てさせるモード。<br>
+① プロジェクト全体を広く読み込む → ② 詳細な実装計画を作る → ③ 承認を待つ（勝手に実装しない）<br><br>
+<strong>Thinking Mode</strong>：複雑なロジックやバグ解析のとき、Claudeにじっくり考えさせるモード。プロンプトにそのまま書くだけで使えます。<br><br>
+Think → Think more → Think a lot → Think longer → <strong>Ultrathink</strong>（最大限の推論）<br><br>
+使用例：<code>ultrathink を使ってこのバグの原因を特定して</code>`,
+        note: "両モードはトークンを多く消費します。必要なときだけ使うのが賢い使い方。小さな変更には不要。"
+      },
+      {
+        term: "会話の制御",
+        en: "Escape / /compact / /clear",
+        body: `<strong>Escape</strong>：Claudeを途中で止める。間違った方向に走り始めたとき即座に止められます。<br>
+止めたあと <code>#</code> を打つとメモリを追加できます。同じミスを繰り返すときに「この方法でやれ」と記録しておくと次回から直ります。<br><br>
+<strong>Escape × 2</strong>：過去のメッセージ一覧を表示 → 好きな時点に巻き戻せます。<br><br>
+<strong>/compact</strong>：会話を要約・圧縮。「Claudeがプロジェクトをよく理解してきた」ときに使います。知識を残したまま次のタスクへ。<br><br>
+<strong>/clear</strong>：会話履歴を完全削除。全く別のタスクに切り替えるときに使います。`,
+        note: "同じプロジェクトで続ける → /compact、全く別のタスクへ → /clear"
+      },
+      {
+        term: "Custom Commands",
+        en: "Custom Commands / $ARGUMENTS",
+        body: `よく使う長い指示文を短いコマンドに保存して再利用する仕組みです。<br><br>
+<strong>場所：</strong><code>.claude/commands/</code> フォルダの中に <code>.md</code> ファイルを作る<br>
+<strong>命名：</strong>ファイル名がそのままコマンド名になる（例：<code>write_tests.md</code> → <code>/write_tests</code>）<br>
+<strong>引数：</strong>可変部分は <code>$ARGUMENTS</code> と書く<br><br>
+使用例：<code>/write_tests hooks/read_hook.js</code>`,
+        note: "「毎回この長い指示を打つのが面倒」と感じたときに作るもの。最初から作ろうとしなくてよい。"
+      },
+      {
+        term: "MCP の使い方（Claude Code）",
+        en: "MCP Setup",
+        body: `MCPサーバーの追加はClaude Codeの<strong>外</strong>のターミナルで行います。<br><br>
+<code>claude mcp add playwright npx @playwright/mcp@latest</code><br><br>
+権限を毎回聞かれるのが面倒な場合は <code>.claude/settings.local.json</code> に追加：<br><br>
+<code>{ "permissions": { "allow": ["mcp__playwright"], "deny": [] } }</code>`,
+        note: "mcp__ はアンダースコアが2つ（mcp_playwright ではなく mcp__playwright）。"
+      },
+      {
+        term: "GitHub Integration",
+        en: "GitHub Actions / @claude",
+        body: `Claude Codeのターミナルで <code>/install-github-app</code> を実行するとセットアップが始まります。<br><br>
+<strong>Mention Action</strong>：IssueやPRで <code>@claude</code> と書くと自動でタスクを実行してくれます。<br>
+<strong>PR Action</strong>：PRを作るたびにClaudeが自動でコードレビューを行います。<br><br>
+<strong>GitHub Actions上での注意点：</strong>ローカルと違い、使うツールを一つひとつ明示的に書く必要があります（省略不可）。`,
+        note: "GitHub Actions = 省略不可。全ツールを個別に明示する。ローカル = 省略可能。"
+      },
+      {
+        term: "Hooks",
+        en: "PreToolUse / PostToolUse",
+        body: `Claudeがツールを使う前後に、自動で別の処理を走らせる仕組みです。<br><br>
+ツール実行が <strong>Trigger</strong>、Hookの処理が <strong>Process</strong>、結果が <strong>Action</strong>。<br><br>
+<strong>PreToolUse</strong>：ツール実行の直前。処理を止める・エラーを返すことができます。<br>
+<strong>PostToolUse</strong>：ツール実行の直後。後処理を走らせる・フィードバックを返す（止めることはできない）。<br><br>
+<strong>Hookを作る4ステップ：</strong><br>
+① Pre / Post を決める → ② どのツールを監視するか決める（Matcher） → ③ 実行するコマンドを書く → ④ 終了コードでClaudeに結果を伝える<br><br>
+<strong>Exit code：</strong><code>0</code> = 許可、<code>2</code> = ブロック（PreToolUseのみ）<br><br>
+<strong>他のHook種類：</strong>Notification / Stop / SubagentStop / PreCompact`,
+        note: "Hookのパスは相対パスではなく絶対パスで書く（セキュリティのため）。設定はsettings.local.jsonに書くのが安全。"
+      },
+      {
+        term: "Hooks の実用例（.env 保護）",
+        en: "Hook Example / .env Protection",
+        body: `<code>.env</code> ファイルにはAPIキーなどの機密情報が入っています。Claudeに読まれたくない場合：<br><br>
+PreToolUse Hook を設定<br>
+↓ 監視対象：<code>Read|Grep</code>（<code>|</code> はOR演算子）<br>
+↓ tool_input.file_path が <code>.env</code> を含んでいたら<br>
+↓ Exit code 2 でブロック ＋ エラーメッセージを返す<br><br>
+<strong>Hookによる型チェックの自動化（PostToolUse）：</strong><br>
+Claudeがファイルを編集 → PostToolUse Hook が起動 → 型チェックを自動実行 → エラーがあればClaudeにフィードバック → Claudeが自動で修正`,
+        note: "HooksはClaudeの「やり忘れ」を自動で検知して修正させる仕組み。権限管理の実装方法でもある。"
+      },
+      {
+        term: "Claude Code SDK",
+        en: "SDK / Programmatic Access",
+        body: `Claude Codeをプログラムの中から呼び出すための道具箱です。ターミナルで手動で使うのではなく、自分のアプリやスクリプトの中に組み込めます。<br><br>
+<strong>デフォルトは読み取り専用</strong>（書き込みは明示的に許可が必要）<br><br>
+基本的な使い方（TypeScript）：<br>
+<code>import { query } from "@anthropic-ai/claude-code";<br>
+for await (const message of query({ prompt })) { ... }</code><br><br>
+<strong>活用場面：</strong>Gitフック・ビルドスクリプト・CI/CDパイプライン・自動ドキュメント生成`,
+        note: "データサイエンス用途では、Pythonスクリプトの中からClaude Codeを呼んで分析を自動化できます。"
+      }
+    ]
+  },
+  {
+    title: "第5章　運用管理・ビジネス収益化",
+    cards: [
+      {
+        term: "権限管理",
+        en: "Permission Management",
+        body: `AIにどこまで触らせるかを明示的に制限することです。<br><br>
+Claude Codeはあなたのパソコンに直接触れるため、権限を与えすぎると重要なファイルを誤って削除・書き換えるリスクがあります。`,
+        note: "新人アルバイトに「バックヤードはOK、金庫室はダメ」と決めておくイメージです。"
+      },
+      {
+        term: "Git と GitHub",
+        en: "Git / GitHub / Version Control",
+        body: `<strong>Git（ギット）</strong>：ファイルの変更履歴をオフラインで管理するツール。過去のバージョンにいつでも戻せます。<br><br>
+<strong>GitHub（ギットハブ）</strong>：Gitの履歴データをクラウドに保存・共有するサービス。GitをGitHubに送ることを <code>Push（プッシュ）</code> と言います。<br><br>
+<strong>Commit（コミット）</strong>：変更を記録すること<br>
+<strong>Revert（リバート）</strong>：過去の状態に戻すこと`,
+        note: "GitはGoogleドキュメントの「変更履歴」機能のコード版です。"
+      },
+      {
+        term: "Worktrees と Branch",
+        en: "Worktrees / Branch",
+        body: `<strong>Branch（ブランチ）</strong>：作業の分岐。本番用と開発用でコードを分けること。<br><br>
+<strong>Worktrees（ワークツリーズ）</strong>：同じプロジェクトの複数ブランチを同時に開いて作業できるGitの機能。<br><br>
+本番環境を動かしたまま、別の場所で新機能を開発できます。失敗しても本番は完全に無傷です。`,
+        note: "Wordで「最終版.docx」と「改良中.docx」を同時に開いて作業するイメージです。"
+      },
+      {
+        term: "バリューベース・プライシング",
+        en: "Value-Based Pricing / Retainer",
+        body: `労働時間ではなく、提供する価値に基づいて価格を決める方法です。<br><br>
+<strong>時間ベース</strong>：「10時間かかったので10万円」→ 効率化すると損をする矛盾が生まれる<br>
+<strong>価値ベース</strong>：「月100万円のコストが削減されるので30万円」→ 作業時間は関係ない<br><br>
+<strong>Retainer（リテーナー）</strong>：月額の保守費用。10件契約で月30万円が自動的に入り続ける安定収益モデル。`,
+        note: "Claude Codeで開発が速くなるほど、価値ベースの方が有利になります。"
+      },
+      {
+        term: "オンボーディング",
+        en: "Onboarding / Delivery",
+        body: `完成したシステムを引き渡し、クライアントがスムーズに使い始められるようサポートするプロセス全体です。<br><br>
+含まれる内容：<br>
+• 使い方マニュアル（ドキュメント）の作成<br>
+• 操作説明（ZoomやMeetでのデモ）<br>
+• サポート体制の明示<br>
+• 1ヶ月後の効果確認`,
+        note: "新規クライアント獲得のコストは既存維持の5倍。オンボーディングの質が長期契約と紹介を生みます。"
+      }
+    ]
+  },
+  {
+    title: "第7章　Skills — エージェントスキル",
+    cards: [
+      {
+        term: "Skillsとは",
+        en: "Skills / SKILL.md / On-demand loading",
+        body: `Claudeに「この作業のやり方」を一度だけ教えておくMarkdownファイルです。毎回同じ指示を繰り返す必要がなくなります。<br><br>
+<strong>配置場所：2種類</strong><br>
+<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;">
+<tr style="border-bottom:1px solid rgba(255,255,255,0.1)"><th style="text-align:left;padding:4px 8px;color:#7ee8a2">種類</th><th style="text-align:left;padding:4px 8px;color:#7ee8a2">場所</th><th style="text-align:left;padding:4px 8px;color:#7ee8a2">特徴</th></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px">Personal Skill</td><td style="padding:4px 8px"><code>~/.claude/skills/</code></td><td style="padding:4px 8px">自分のPCのどのプロジェクトでも使える</td></tr>
+<tr><td style="padding:4px 8px">Project Skill</td><td style="padding:4px 8px"><code>.claude/skills/</code>（リポジトリ内）</td><td style="padding:4px 8px">そのプロジェクトをcloneした全員が使える</td></tr>
+</table><br>
+<strong>Frontmatter</strong>：ファイル冒頭の <code>---</code> で囲まれたメタデータ領域（name, description）。これがSkillの「入口」です。<br><br>
+<strong>ロードの仕組み（2段階）</strong><br>
+① 起動時：全Skillの <code>name</code> と <code>description</code> だけを読み込む（本文は読まない）<br>
+② 依頼時：リクエストと <code>description</code> を照合 → マッチしたら本文をロード<br><br>
+→ 使わないSkillの本文はコンテキストを消費しない（On-demand loading）`,
+        note: "CLAUDE.mdとの違い：CLAUDE.mdは毎回全読み込み、Skillsは必要なときだけ。"
+      },
+      {
+        term: "Skillsの作り方",
+        en: "mkdir / SKILL.md / Frontmatter",
+        body: `<strong>手順</strong><br>
+<code>mkdir -p ~/.claude/skills/pr-description</code><br>
+その中に <code>SKILL.md</code> を作成します。<br><br>
+<strong>ファイル構造の注意</strong><br>
+<code>~/.claude/skills/<br>
+└── pr-description/　← 必ずフォルダで囲む<br>
+&nbsp;&nbsp;&nbsp;&nbsp;└── SKILL.md　← 大文字・小文字に注意</code><br><br>
+<strong>SKILL.mdの書き方</strong><br>
+<pre style="background:var(--code-bg);padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;font-family:'JetBrains Mono',monospace;">---
+name: pr-description
+description: Writes PR descriptions. Use when creating
+  pull request descriptions or summarizing code changes.
+  Use when: "PRの説明を書いて" "write a PR description"
+allowed-tools: Read, Grep, Glob, Bash  # 任意
+model: sonnet                          # 任意
+---
+
+## What
+One sentence explaining what this PR does.
+
+## Why
+Brief context on why this change is needed.
+
+## Changes
+- Bullet points of specific changes made
+- Group related changes together</pre>
+descriptionに <code>Use when: "..."</code> の形で実際に使いそうなフレーズを書くと起動精度が上がります。<br><br>
+作成後は必ず <strong>Claude Codeを再起動</strong> してください。`,
+        note: "変更・削除後も再起動が必要。claude --debug でロードエラーを確認できます。"
+      },
+      {
+        term: "5つの機能の使い分け",
+        en: "CLAUDE.md / Skills / Subagents / Hooks / MCP",
+        body: `<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;">
+<tr style="border-bottom:1px solid rgba(255,255,255,0.1)"><th style="text-align:left;padding:4px 8px;color:#7ee8a2">機能</th><th style="text-align:left;padding:4px 8px;color:#7ee8a2">いつ起動するか</th><th style="text-align:left;padding:4px 8px;color:#7ee8a2">何をするか</th></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px"><strong>CLAUDE.md</strong></td><td style="padding:4px 8px">会話開始時に毎回</td><td style="padding:4px 8px">プロジェクト全体の常時ルール</td></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px"><strong>Skills</strong></td><td style="padding:4px 8px">リクエストに合致したとき自動で（request-driven）</td><td style="padding:4px 8px">タスク固有の手順・知識</td></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px"><strong>Subagents</strong></td><td style="padding:4px 8px">明示的に委任されたとき</td><td style="padding:4px 8px">独立したコンテキストで別タスクを実行</td></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px"><strong>Hooks</strong></td><td style="padding:4px 8px">イベント発生時（event-driven）</td><td style="padding:4px 8px">自動後処理・ガードレール</td></tr>
+<tr><td style="padding:4px 8px"><strong>MCP servers</strong></td><td style="padding:4px 8px">接続設定済みのとき</td><td style="padding:4px 8px">外部サービスとの連携（別カテゴリ）</td></tr>
+</table><br>
+<strong>Skills vs Subagents</strong>（コンテキストの扱い）<br>
+• Skills → 今の会話にスキルの知識が<strong>追加</strong>される。会話は一つ。<br>
+• Subagents → 別コンテキストが立ち上がり、結果だけ返ってくる。会話が分離。<br><br>
+<strong>Skills vs Hooks</strong><br>
+• Skills → 頼まれ方で起動（request-driven）<br>
+• Hooks → 出来事で起動（event-driven）<br>
+SkillsがHooksのトリガーになることもある（Skills実行 → ファイル書き込み → HooksがPostToolUseで起動）。`,
+        note: "CLAUDE.mdとSkillsは同じコンテキスト内で「足し算」される。Subagentsは別の土俵。"
+      },
+      {
+        term: "Skillsの高度な設定とトラブルシューティング",
+        en: "allowed-tools / Progressive Disclosure / Priority hierarchy / agent-skills-verifier",
+        body: `<strong>allowed-tools</strong>：スキル起動中に使えるツールを制限する<br>
+例：<code>allowed-tools: Read, Grep, Glob, Bash</code>（省略すると制限なし）<br><br>
+<strong>Progressive Disclosure（大きなSkillの整理術）</strong><br>
+SKILL.mdは500行以内が目安。超える場合は別ファイルに分離：<br>
+<pre style="background:var(--code-bg);padding:10px;border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;">.claude/skills/data-analysis/
+├── SKILL.md            ← メインの指示（500行以内）
+├── references/
+│   └── stats-methods.md   ← 参照資料
+└── scripts/
+    └── plot_helper.py     ← ユーティリティスクリプト</pre>
+スクリプトは実行されるだけで中身はコンテキストに入らない → トークン節約。<br><br>
+<strong>優先順位</strong>（同名Skillが複数ある場合）<br>
+<code>Enterprise → Personal → Project → Plugins</code><br>
+上位が常に勝つ。競合時の対処：①名前を変える（簡単）②Enterprise管理者に依頼する<br><br>
+<strong>トラブルシューティング</strong><br>
+<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;">
+<tr style="border-bottom:1px solid rgba(255,255,255,0.1)"><th style="text-align:left;padding:4px 8px;color:#7ee8a2">症状</th><th style="text-align:left;padding:4px 8px;color:#7ee8a2">原因と対処</th></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px">起動しない</td><td style="padding:4px 8px">descriptionの書き方を見直す。Use when句を追加する</td></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px">読み込まれない</td><td style="padding:4px 8px">フォルダで囲んでいるか・ファイル名が正確にSKILL.mdか確認</td></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px">違うSkillが起動する</td><td style="padding:4px 8px">descriptionが似すぎ → より具体的な名前・説明に変える</td></tr>
+<tr><td style="padding:4px 8px">実行時エラー</td><td style="padding:4px 8px">依存ライブラリ確認 / <code>chmod +x</code> で実行権限付与 / パスは<code>/</code>で統一</td></tr>
+</table><br>
+まず <code>uvx agent-skills-verifier</code> で構造チェック → <code>claude --debug</code> でロードエラー確認`,
+        note: "Subagentsへの引き継ぎ：Custom subagentのfrontmatterに skills: [スキル名] と明示指定が必要。自動では引き継がれない。"
+      },
+      {
+        term: "Skillsの共有方法",
+        en: "Repository commit / Plugin / Enterprise managed settings",
+        body: `<strong>① リポジトリにコミット（最もシンプル）</strong><br>
+<code>.claude/skills/pr-review/SKILL.md</code> をGitにpushするだけ。cloneした全員が自動で使える。<br><br>
+<strong>② Plugins（複数プロジェクトをまたぐ配布）</strong><br>
+GitHubリポジトリやnpmパッケージとして公開し、設定ファイルで参照する形。<br><br>
+<strong>③ Enterprise managed settings（組織全体への強制配布）</strong><br>
+管理者が設定 → 全メンバーに最優先で適用。「must（必須）」なルール・コンプライアンス要件に使う。`,
+        note: "Built-in agents（Explorer・Plan・Verify）はSkillsを使えない。Custom subagentのfrontmatterで明示指定したもののみ対応。"
+      }
+    ]
+  },
+  {
+    title: "第8章　Subagents — サブエージェント",
+    cards: [
+      {
+        term: "Subagentsとは",
+        en: "Subagent / Isolated context / Context window / Built-in subagents",
+        body: `メイン会話から委任を受け、<strong>独立したコンテキスト</strong>で動く専門エージェントです。<br><br>
+<strong>なぜ必要か</strong>：Claude Codeを使い続けるとコンテキストウィンドウが蓄積されます。Subagentsはこれを解決します。<br><br>
+<strong>動作の流れ</strong><br>
+① メイン会話でタスクを委任<br>
+② Subagentが別コンテキストで起動<br>
+③ ファイル読み込み・検索など中間処理を全て実行<br>
+④ <strong>結果（要約）だけ</strong>をメイン会話に返す<br>
+→ 中間処理のログはメインには残らない<br><br>
+<strong>Built-in Subagents（標準搭載・Skillsは使えない）</strong><br>
+<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;">
+<tr style="border-bottom:1px solid rgba(255,255,255,0.1)"><th style="text-align:left;padding:4px 8px;color:#7ee8a2">名前</th><th style="text-align:left;padding:4px 8px;color:#7ee8a2">役割</th></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px">General purpose</td><td style="padding:4px 8px">探索＋実行が必要な複数ステップのタスク全般</td></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px">Explore</td><td style="padding:4px 8px">コードベースの高速検索・ナビゲーション専用</td></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px">Plan</td><td style="padding:4px 8px">Planning Modeで使われる実装前の調査・分析専用</td></tr>
+<tr><td style="padding:4px 8px">Verify</td><td style="padding:4px 8px">コード変更後の検証・テスト確認専用</td></tr>
+</table>`,
+        note: "Subagentsはコンテキストウィンドウ節約のためにある。「中間処理をメインに見せない」ことがメリット。"
+      },
+      {
+        term: "Subagentsの作り方",
+        en: "/agents / system prompt / color / model",
+        body: `<strong>作成コマンド</strong>：Claude Code内で <code>/agents</code> → Create new agent<br><br>
+<strong>① スコープを決める</strong><br>
+<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;margin-bottom:10px;">
+<tr style="border-bottom:1px solid rgba(255,255,255,0.1)"><th style="text-align:left;padding:4px 8px;color:#7ee8a2">種類</th><th style="text-align:left;padding:4px 8px;color:#7ee8a2">場所</th><th style="text-align:left;padding:4px 8px;color:#7ee8a2">使える範囲</th></tr>
+<tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><td style="padding:4px 8px">Project-level</td><td style="padding:4px 8px"><code>.claude/agents/</code></td><td style="padding:4px 8px">今のプロジェクトだけ</td></tr>
+<tr><td style="padding:4px 8px">User-level</td><td style="padding:4px 8px"><code>~/.claude/agents/</code></td><td style="padding:4px 8px">自分のPC全プロジェクト</td></tr>
+</table>
+<strong>② ツール制限</strong>：必要最低限のツールだけ与える（allowed-toolsと同じ発想）<br>
+<strong>③ モデル選択</strong>：Haiku（軽量・速い）/ Sonnet（バランス）/ Opus（複雑な分析）/ Inherit（メインと同じ）<br><br>
+<strong>生成されるファイル（フォルダではなく直接ファイルとして保存）</strong><br>
+<pre style="background:var(--code-bg);padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;font-family:'JetBrains Mono',monospace;">---
+name: code-quality-reviewer
+description: Use this agent when you need to review
+  recently written or modified code. （1行で書く。改行は \\n）
+tools: Read, Grep, Glob, Bash
+model: sonnet
+color: blue
+---
+
+（システムプロンプト）
+何に注目するか・どう分析するか・どう結果を返すか</pre>
+<strong>Skillsとの構造比較</strong>：Skills＝フォルダ必須、Subagents＝ファイル一枚で完結`,
+        note: "descriptionは必ず1行。color はUIで複数のSubagentが動いているときに識別するための設定。"
+      },
+      {
+        term: "Subagentsの設計：4つのパターン",
+        en: "Input prompt / Output format / Obstacles Encountered / tool restriction",
+        body: `<strong>① descriptionを精密に書く</strong><br>
+メイン会話が起動すると、全Subagentのname・descriptionがシステムプロンプトに自動組み込みされます。これでメインが「どのSubagentをいつ起動するか」を判断します。さらにdescriptionはSubagentへの<strong>input prompt（自動生成される指示文）の質</strong>にも影響します。<br><br>
+<strong>② 出力フォーマットを定義する（最重要）</strong><br>
+<pre style="background:var(--code-bg);padding:10px;border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;">1. Summary: 変更の概要（2〜3文）
+2. Issues Found: 問題点（深刻度付き）
+3. Suggestions: 改善案
+4. Files Reviewed: レビューしたファイル一覧
+5. Obstacles Encountered: 発見した問題・回避策</pre>
+フォーマットが<strong>終了基準</strong>になり、無限実行を防ぐ。<br><br>
+<strong>③ Obstacles Encounteredを入れる</strong><br>
+Subagentは独立コンテキストで動くため、作業中の発見（問題・回避策など）がメインに自動では伝わらない。このセクションを明示することで確実に引き継がれる。<br><br>
+<strong>④ ツールアクセスを絞る</strong><br>
+調査専用 → Read/Grep/Globのみ　　実装専用 → Write/Editも追加`,
+        note: "システムプロンプトの質がSubagentの品質を決める。「いつ終わるか」の基準がないSubagentは暴走する。"
+      },
+      {
+        term: "Subagentsをいつ使うか",
+        en: "Main thread / Handoff / Fresh perspective / test runner",
+        body: `<strong>唯一の判断基準</strong><br>
+<blockquote style="border-left:3px solid #34d399;padding:8px 12px;margin:8px 0;background:rgba(52,211,153,0.06);border-radius:0 6px 6px 0;font-style:italic;">「途中のプロセスを自分（メインスレッド）が見る必要があるか？」</blockquote>
+• <strong>No（結果だけでいい）</strong> → Subagentに任せる<br>
+• <strong>Yes（途中を見ながら判断したい）</strong> → メイン会話で直接やる<br><br>
+<strong>向いているケース</strong><br>
+• リサーチ・探索（どのファイルを読んだかは関係ない）<br>
+• コードレビュー（先入観のないフレッシュな視点がメリット）<br>
+• カスタムシステムプロンプトが必要なタスク（コピーライティングなど）<br><br>
+<strong>向いていないケース</strong><br>
+• 前のステップの結果に依存するパイプライン（handoffで情報が失われる）<br>
+• 単なる「専門家ペルソナ」の指定（コンテキスト分離の意味がない）<br>
+• テスト実行（失敗時の詳細ログが見えなくなる。結果しか返ってこない）`,
+        note: "Subagentの独立コンテキストはメリットでもあり制約でもある。判断基準は「見せてほしい途中経過があるか？」。"
+      }
+    ]
+  }
+
+];
+
+function render(filter = "") {
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  const q = filter.toLowerCase();
+  let totalFound = 0;
+
+  chapters.forEach((ch, ci) => {
+    const color = CHAPTER_COLORS[ci % CHAPTER_COLORS.length];
+    const filtered = ch.cards.filter(c =>
+      c.term.toLowerCase().includes(q) ||
+      c.en.toLowerCase().includes(q) ||
+      c.body.toLowerCase().includes(q) ||
+      (c.note && c.note.toLowerCase().includes(q))
+    );
+    if (!filtered.length) return;
+    totalFound += filtered.length;
+
+    const section = document.createElement("div");
+    section.className = "chapter";
+    section.innerHTML = `
+      <div class="chapter-header">
+        <div class="chapter-dot" style="background:${color}"></div>
+        <span class="chapter-label">${ch.title}</span>
+        <div class="chapter-line"></div>
+      </div>
+      <div class="cards"></div>
+    `;
+    const grid = section.querySelector(".cards");
+
+    filtered.forEach(card => {
+      const el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML = `
+        <button class="card-toggle" aria-expanded="false">
+          <span class="card-term">${card.term}</span>
+          <span class="card-en">${card.en}</span>
+          <span class="card-arrow">▾</span>
+        </button>
+        <div class="card-body">
+          <div class="card-body-inner">
+            ${card.body}
+            ${card.note ? `<div class="note">${card.note}</div>` : ""}
+          </div>
+        </div>
+      `;
+      el.querySelector(".card-toggle").addEventListener("click", () => {
+        el.classList.toggle("open");
+      });
+      grid.appendChild(el);
+    });
+
+    main.appendChild(section);
+  });
+
+  if (!totalFound) {
+    main.innerHTML = `<p class="no-results">「${filter}」に一致する用語が見つかりませんでした。</p>`;
+  }
+}
+
+function filterCards() {
+  render(document.getElementById("search").value);
+}
+
+document.addEventListener("DOMContentLoaded", function() { render(); });
+</script>
+</body>
+</html>
